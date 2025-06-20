@@ -7,6 +7,7 @@ A collection of automated workflows for n8n automation platform.
 - [`README.md`](#readme) - This documentation file
 - [`workflows/social-media-intelligence-platform-basic-postcrawl-anthropic.json`](#social-media-intelligence-platform) - Social media analysis workflow
 - [`workflows/wip-viral-video-postcrawl.json`](#viral-video-creation) - Viral video content creation workflow
+- [`workflows/viral-video-sample-template.json`](#ai-automated-short-form-video-generator) - Complete AI-powered video production template
 
 ## Workflows
 
@@ -138,3 +139,49 @@ The workflow produces a comprehensive video package containing:
 #### Current Status
 
 This workflow is currently in development (WIP - Work in Progress). Video generation functionality is being implemented and will be added in future updates.
+
+### AI Automated Short-Form Video Generator
+
+**File:** [`workflows/viral-video-sample-template.json`](./workflows/viral-video-sample-template.json)
+
+A comprehensive AI-powered workflow template that automates the entire process of creating short-form videos for TikTok, YouTube Shorts, and Instagram Reels from ideation to publishing.
+
+#### Who Is This For?
+
+Content creators, digital marketers, and social media managers who want to automate the creation of short-form videos for platforms like TikTok, YouTube Shorts, and Instagram Reels without extensive video editing skills.
+
+#### What Problem Does This Solve?
+
+Creating engaging short-form videos consistently is time-consuming and requires multiple tools and skills. This workflow automates the entire process from ideation to publishing, significantly reducing the manual effort needed while maintaining content quality.
+
+#### What This Workflow Does
+
+This all-in-one solution transforms ideas into fully produced short-form videos through a 5-step process:
+
+1. **Generate video captions** from ideas stored in a Google Sheet
+2. **Create AI-generated images** using Flux and the OpenAI API
+3. **Convert images to videos** using Kling's API
+4. **Add voice-overs** to your content with Eleven Labs
+5. **Complete the video production** with Creatomate by adding templates, transitions, and combining all elements
+
+The workflow handles everything from sourcing content ideas to rendering the final video, and even notifies you on Discord when videos are ready.
+
+#### Prerequisites
+
+- **n8n installation** (tested on version 1.81.4)
+- **OpenAI API Key** (free trial credits available)
+- **PiAPI** (free trial credits available)
+- **Eleven Labs** (free account)
+- **Creatomate API Key** (free trial credits available)
+- **Google Sheets API** enabled in Google Cloud Console
+- **Google Drive API** enabled in Google Cloud Console
+- **OAuth 2.0 Client ID and Client Secret** from your Google Cloud Console Credentials
+
+#### How To Customize This Workflow
+
+- Adjust the Google Sheet structure to include additional data like video length, duration, style, etc.
+- Modify the prompt templates for each AI service to match your brand voice and content style
+- Update the Creatomate template to reflect your visual branding
+- Configure notification preferences in Discord to manage your workflow
+
+This workflow combines multiple AI technologies to create a seamless content production pipeline, saving you hours of work per video and allowing you to focus on strategy rather than production.
