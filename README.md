@@ -6,6 +6,7 @@ A collection of automated workflows for n8n automation platform.
 
 - [`README.md`](#readme) - This documentation file
 - [`workflows/social-media-intelligence-platform-basic-postcrawl-anthropic.json`](#social-media-intelligence-platform) - Social media analysis workflow
+- [`workflows/wip-viral-video-postcrawl.json`](#viral-video-creation) - Viral video content creation workflow
 
 ## Workflows
 
@@ -90,3 +91,50 @@ The workflow is optimized for Anthropic's token limits:
 - **Token limit errors**: Reduce comment limits further in "Process Comments" node
 - **API authentication errors**: Verify PostCrawl Bearer token and Anthropic API keys are correctly configured
 - **No results**: Check topic keywords and engagement thresholds in configuration
+
+### Viral Video Creation Workflow
+
+**File:** [`workflows/wip-viral-video-postcrawl.json`](./workflows/wip-viral-video-postcrawl.json)
+
+An automated viral video content creation workflow that generates complete video packages using PostCrawl API and OpenAI services for content generation, audio narration, and image creation.
+
+#### What It Does
+
+This workflow automatically:
+- Generates viral-ready topics from predefined categories
+- Searches for trending content using PostCrawl API
+- Creates engaging video scripts using OpenAI GPT-4
+- Generates audio narration with text-to-speech
+- Creates relevant images for video content
+- Produces marketing copy and social media assets
+- Prepares complete video packages ready for production
+
+#### How It Works
+
+1. **Topic Generation**: Randomly selects from viral topic categories (space, history, science, etc.)
+2. **Content Research**: Uses PostCrawl to extract trending discussions from Reddit
+3. **Content Processing**: Analyzes and structures viral content with engagement metrics
+4. **Script Creation**: Generates 30-45 second video scripts optimized for social media
+5. **Asset Generation**: Creates audio narration and visual content using OpenAI
+6. **Video Preparation**: Merges all assets and prepares FFmpeg commands for video creation
+7. **Marketing Assets**: Generates platform-specific copy for YouTube, TikTok, and Instagram
+
+#### Prerequisites
+
+1. **n8n instance** - Running n8n automation platform
+2. **PostCrawl API account** - For social media content extraction
+3. **OpenAI API account** - For script generation, image creation, and audio synthesis
+
+#### Output Format
+
+The workflow produces a comprehensive video package containing:
+- **Video Script**: Engaging 30-45 second narration
+- **Audio File**: Professional voice narration (MP3 format)
+- **Images**: Content-relevant visuals for video production
+- **Marketing Copy**: Platform-specific titles and descriptions
+- **Production Data**: FFmpeg commands and technical specifications
+- **Metadata**: Hashtags, topics, and engagement metrics
+
+#### Current Status
+
+This workflow is currently in development (WIP - Work in Progress). Video generation functionality is being implemented and will be added in future updates.
