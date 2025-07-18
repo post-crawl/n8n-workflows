@@ -1,0 +1,334 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b13253a6-c364-400f-934a-e95f2abceb6a",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        -544,
+        -32
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ Important Considerations\n\n### Multi-Subreddit Search:\n- PostCrawl query format: `search terms \"subreddit1\" or \"subreddit2\"`\n- Subreddit names are automatically quoted\n- Searching 3-5 subreddits gives best variety\n- More subreddits = longer processing time\n\n### Authentication:\n- PostCrawl requires Bearer token authentication\n- Keep the API key in a new creds and add that to the bearer in the PostCrawl node\n\n### PostCrawl Response Time:\n- Can take up to 5 minutes for results\n- Multi-subreddit searches may take longer\n- Set appropriate timeout (300000ms)\n- Consider implementing webhook for async processing\n\n### Content Guidelines:\n- Ensure generated content is appropriate\n- Review scripts before video creation\n- Respect Reddit content attribution\n\n### API Limits:\n- PostCrawl credits based on results\n- More results = more credits used\n- OpenAI token usage for generation\n- Consider batching for efficiency",
+        "height": 600,
+        "width": 320,
+        "color": 6
+      },
+      "id": "79ed58eb-95f0-46a2-833a-69889fbab94d",
+      "name": "Important Considerations",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        208
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "yeti bigfoot",
+              "type": "string"
+            },
+            {
+              "id": "category",
+              "name": "category",
+              "value": "conspiracy theories",
+              "type": "string"
+            },
+            {
+              "id": "subreddits",
+              "name": "subreddits",
+              "value": "HighStrangeness Cryptozoology bigfoot conspiracy UnresolvedMysteries",
+              "type": "string"
+            },
+            {
+              "id": "numberOfPosts",
+              "name": "numberOfPosts",
+              "value": 15,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cc25cccf-171e-4fab-9b24-9c018ab33f99",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -320,
+        -32
+      ],
+      "typeVersion": 3.4,
+      "notes": "Configure your search parameters here. Subreddits should be space-separated (e.g., 'HighStrangeness bigfoot conspiracy'). They will be automatically quoted in the search query. Increase numberOfPosts to 15-20 when searching multiple subreddits."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://edge.postcrawl.com/v1/search-and-extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.topic }} {{ $json.subreddits.split(' ').map(sub => '\"' + sub + '\"').join(' or ') }}"
+            },
+            {
+              "name": "results",
+              "value": "={{ Number($json.numberOfPosts) }}"
+            },
+            {
+              "name": "include_comments",
+              "value": "={{true}}"
+            },
+            {
+              "name": "response_mode",
+              "value": "raw"
+            },
+            {
+              "name": "social_platforms",
+              "value": "={{[\"reddit\"]}}"
+            },
+            {
+              "name": "page",
+              "value": "={{ 1 }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ef854071-3211-485c-a872-21e21ff5f258",
+      "name": "Search Reddit via PostCrawl",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -96,
+        -32
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "9ZpioiZZ9VsCAH0v",
+          "name": "PostCrawl Bearer dev-ideaape"
+        }
+      },
+      "notes": "Searches multiple Reddit subreddits using PostCrawl API. The query format is: 'search terms \"subreddit1\" \"subreddit2\"'. Can take up to 5 minutes to return results."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "check-null",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "={{ null }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-empty",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ffe6cb1c-e029-4692-85c7-355fe2576baa",
+      "name": "Check for Valid Posts",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        128,
+        -32
+      ],
+      "typeVersion": 2,
+      "notes": "Filters to keep only posts without extraction errors (error is null or empty)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Reddit posts for OpenAI processing\nconst posts = $input.all();\nconst category = $('Configuration').first().json.category;\nconst topic = $('Configuration').first().json.topic;\n\n// Extract relevant post data\nconst processedPosts = posts.map(item => {\n  const post = item.json.raw;\n  if (!post) return null;\n  \n  // Get top comments if available\n  const topComments = post.comments ? \n    post.comments\n      .sort((a, b) => b.score - a.score)\n      .slice(0, 5)\n      .map(c => ({\n        text: c.text,\n        score: c.score\n      })) : [];\n  \n  return {\n    title: post.title,\n    description: post.description,\n    score: post.score,\n    subreddit: post.subredditName,\n    topComments: topComments\n  };\n}).filter(Boolean);\n\nreturn [{\n  json: {\n    category: category,\n    topic: topic,\n    posts: processedPosts,\n    postsFormatted: JSON.stringify(processedPosts, null, 2)\n  }\n}];"
+      },
+      "id": "ba2ba7e5-818b-49ac-8adc-2ce0ff2b0946",
+      "name": "Prepare Reddit Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        352,
+        -32
+      ],
+      "typeVersion": 2,
+      "notes": "Extracts and formats the most relevant data from Reddit posts including top comments"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a creative content writer specializing in creating viral {{ $json.category }} based on Reddit posts. Your task is to analyze Reddit posts and create engaging, short-form content perfect for YouTube Shorts (under 60 seconds when read aloud).\n\nContent Guidelines:\n- For JOKES: Create funny, relatable jokes inspired by the Reddit content\n- For CONSPIRACY THEORIES: Create intriguing, thought-provoking theories (keep them entertaining, not harmful)\n- For TODAY I LEARNED: Extract fascinating facts and present them in an engaging way\n\nFormat Requirements:\n- Keep content under 200 words (approximately 60 seconds when spoken)\n- Use engaging hooks at the beginning\n- Include natural pauses for dramatic effect\n- End with a call-to-action or thought-provoking question\n\nIMPORTANT: You MUST respond with valid JSON in this exact format:\n{\n  \"contents\": [\n    {\n      \"title\": \"Catchy title for the content\",\n      \"hook\": \"Opening line to grab attention\",\n      \"body\": \"Main content\",\n      \"ending\": \"Call-to-action or closing thought\"\n    }\n  ]\n}",
+              "role": "system"
+            },
+            {
+              "content": "=Based on these Reddit posts about {{ $json.topic }}, create {{ $json.category }} content:\n\n{{ $json.postsFormatted }}\n\nRemember to:\n1. Make the content engaging and appropriate for YouTube Shorts\n2. Keep it suitable for text-to-speech narration\n3. Return 3-5 different content pieces\n4. Respond ONLY with valid JSON in the specified format"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.8
+        }
+      },
+      "id": "6359e0b9-3318-4f69-96fa-b751ce4a13d8",
+      "name": "Generate Content with OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        576,
+        -32
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "A4NGorxf4I0UVzux",
+          "name": "OpenAi account Elapse old"
+        }
+      },
+      "notes": "Uses GPT-4o-mini to generate creative content based on Reddit posts. Outputs structured JSON with multiple content variations."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the generated content for output\nconst inputData = $input.item.json;\nlet contents = [];\n\n// Parse the JSON string from OpenAI response\ntry {\n  const contentString = inputData.message?.content;\n  if (typeof contentString === 'string') {\n    const parsed = JSON.parse(contentString);\n    contents = parsed.contents || [];\n  }\n} catch (e) {\n  console.error('Failed to parse content:', e);\n  throw new Error('Failed to parse OpenAI response: ' + e.message);\n}\n\nconst category = $('Configuration').first().json.category;\nconst topic = $('Configuration').first().json.topic;\n\n// Check if we have valid content\nif (!contents || contents.length === 0) {\n  throw new Error('No content generated from OpenAI. Response structure: ' + JSON.stringify(inputData));\n}\n\n// Return format for n8n Code node with multiple items\nreturn contents.map((item, index) => ({\n  json: {\n    contentId: `${category}_${topic}_${index + 1}`,\n    category: category,\n    topic: topic,\n    title: item.title || 'Untitled',\n    script: `${item.hook || ''}\\n\\n${item.body || ''}\\n\\n${item.ending || ''}`.trim(),\n    hook: item.hook || '',\n    body: item.body || '',\n    ending: item.ending || '',\n    estimatedDuration: Math.round((item.body || '').split(' ').length / 3), // Rough estimate: 3 words per second\n    createdAt: new Date().toISOString()\n  }\n}));"
+      },
+      "id": "e81b49de-006c-4114-9141-20fcbc11c800",
+      "name": "Format Final Scripts",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        976,
+        -32
+      ],
+      "typeVersion": 2,
+      "notes": "Formats the generated content into structured scripts ready for video production. Handles multiple response structures from OpenAI."
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 Reddit Content Generator Workflow\n\n### Overview\nThis workflow searches multiple Reddit subreddits for trending content and uses AI to generate engaging scripts for YouTube Shorts.\n\n### PostCrawl Query Format:\nThe search query combines regular search terms with quoted subreddit names:\n```\nyeti bigfoot \"HighStrangeness\" or \"Cryptozoology\" or \"bigfoot\"\n```\n\n### Popular Multi-Subreddit Searches:\n\n**For Conspiracy Theories:**\n- Topics: \"yeti bigfoot\"\n- Subreddits: \"HighStrangeness Cryptozoology bigfoot conspiracy\"\n\n- Topics: \"ancient aliens pyramids atlantis\"\n- Subreddits: \"conspiracy AlternativeHistory AncientAliens\"\n\n- Topics: \"UFO sightings government coverup\"\n- Subreddits: \"UFOs aliens conspiracy HighStrangeness\"\n\n**For Today I Learned:**\n- Topics: \"weird historical facts\"\n- Subreddits: \"todayilearned history AskHistorians\"\n\n- Topics: \"space discoveries universe\"\n- Subreddits: \"space astronomy todayilearned\"\n\n**For Jokes:**\n- Topics: \"best puns wordplay\"\n- Subreddits: \"dadjokes puns Jokes\"\n\n### Setup Instructions:\n1. **PostCrawl API Key**: Add your key to the Configuration node\n2. **OpenAI Credentials**: Configure in the OpenAI node\n3. **Configure Search**: \n   - Set your search terms in `topic`\n   - List subreddits in `subreddits` (space-separated)\n   - Choose content `category`\n   - Set `numberOfPosts` (15-20 recommended for multi-subreddit)\n\n### Notes:\n- Searching multiple subreddits gives more diverse content\n- PostCrawl automatically adds quotes to subreddit names\n- Requests can take up to 5 minutes",
+        "height": 640,
+        "width": 400,
+        "color": 7
+      },
+      "id": "5ce51045-8f68-4016-8224-6108ac0bbc98",
+      "name": "Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -544,
+        208
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Search Reddit via PostCrawl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Reddit via PostCrawl": {
+      "main": [
+        [
+          {
+            "node": "Check for Valid Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Valid Posts": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reddit Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reddit Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Content with OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content with OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format Final Scripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9715589f-5fe5-41eb-8785-e8740f0154b8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c8a2282de7b66c3518f515d2b7925b072f0a61547fc3bee35e7b960f8ae6b4b6"
+  },
+  "id": "09S6TXPg3M4e8wKV",
+  "tags": []
+}
