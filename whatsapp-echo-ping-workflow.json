@@ -1,0 +1,127 @@
+{
+  "id": "whatsapp-echo-ping-001",
+  "name": "WhatsApp Echo Ping Bot",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-whatsapp",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-bot-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract WhatsApp message data\nconst whatsappData = $json;\n\n// Handle WhatsApp webhook verification\nif (whatsappData['hub.mode'] && whatsappData['hub.verify_token']) {\n  return {\n    verification: true,\n    challenge: whatsappData['hub.challenge']\n  };\n}\n\n// Process incoming message\nif (whatsappData.entry && whatsappData.entry[0] && whatsappData.entry[0].changes) {\n  const changes = whatsappData.entry[0].changes[0];\n  \n  if (changes.value && changes.value.messages && changes.value.messages[0]) {\n    const message = changes.value.messages[0];\n    const contact = changes.value.contacts[0];\n    \n    // Check if it's a text message\n    if (message.type === 'text') {\n      const originalText = message.text.body;\n      const modifiedText = originalText + ' ping';\n      const phoneNumber = message.from;\n      \n      return {\n        phoneNumber: phoneNumber,\n        messageText: modifiedText,\n        messageId: message.id,\n        contactName: contact.profile.name || 'User'\n      };\n    } else {\n      // Handle non-text messages\n      return {\n        error: 'Non-text message received',\n        messageType: message.type,\n        phoneNumber: message.from\n      };\n    }\n  }\n}\n\n// Handle status updates (delivery reports, etc.)\nif (whatsappData.entry && whatsappData.entry[0] && whatsappData.entry[0].changes) {\n  const changes = whatsappData.entry[0].changes[0];\n  if (changes.value && changes.value.statuses) {\n    return {\n      statusUpdate: true,\n      statuses: changes.value.statuses\n    };\n  }\n}\n\nreturn {\n  error: 'Unable to process WhatsApp data',\n  rawData: whatsappData\n};"
+      },
+      "id": "process-message",
+      "name": "Process Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "httpHeaderAuth",
+        "resource": "message",
+        "operation": "sendText",
+        "phoneNumberId": "={{ $credentials.phoneNumberId }}",
+        "to": "={{ $json.phoneNumber }}",
+        "text": "={{ $json.messageText }}",
+        "options": {}
+      },
+      "id": "whatsapp-send",
+      "name": "Send WhatsApp Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "whatsapp-credentials",
+          "name": "WhatsApp Business API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.verification ? $json.challenge : '{\"status\": \"received\"}' }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "whatsapp-tag-001",
+      "name": "WhatsApp",
+      "createdAt": "2025-06-27T08:30:00.000Z",
+      "updatedAt": "2025-06-27T08:30:00.000Z"
+    },
+    {
+      "id": "bot-tag-001",
+      "name": "Bot",
+      "createdAt": "2025-06-27T08:30:00.000Z",
+      "updatedAt": "2025-06-27T08:30:00.000Z"
+    },
+    {
+      "id": "webhook-tag-001",
+      "name": "Webhook",
+      "createdAt": "2025-06-27T08:30:00.000Z",
+      "updatedAt": "2025-06-27T08:30:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-27T08:30:00.000Z",
+  "versionId": "whatsapp-echo-ping-v1"
+}
