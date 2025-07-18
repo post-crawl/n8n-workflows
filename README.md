@@ -8,6 +8,7 @@ A collection of automated workflows for n8n automation platform.
 - [`workflows/social-media-intelligence-platform-basic-postcrawl-anthropic.json`](#social-media-intelligence-platform) - Social media analysis workflow
 - [`workflows/wip-viral-video-postcrawl.json`](#viral-video-creation) - Viral video content creation workflow
 - [`workflows/viral-video-sample-template.json`](#ai-automated-short-form-video-generator) - Complete AI-powered video production template
+- [`workflows/youtube-script-generator.json`](#youtube-script-generator) - Reddit-based YouTube Shorts script generator
 
 ## Workflows
 
@@ -185,3 +186,84 @@ The workflow handles everything from sourcing content ideas to rendering the fin
 - Configure notification preferences in Discord to manage your workflow
 
 This workflow combines multiple AI technologies to create a seamless content production pipeline, saving you hours of work per video and allowing you to focus on strategy rather than production.
+
+### YouTube Script Generator
+
+**File:** [`workflows/youtube-script-generator.json`](./workflows/youtube-script-generator.json)
+
+An automated workflow that searches multiple Reddit subreddits for trending content and uses OpenAI to generate engaging scripts for YouTube Shorts based on the discovered content.
+
+#### What It Does
+
+This workflow automatically:
+- Searches multiple Reddit subreddits using PostCrawl API
+- Extracts popular posts with engagement metrics and top comments
+- Analyzes Reddit content to identify viral-worthy themes
+- Generates multiple script variations for YouTube Shorts (under 60 seconds)
+- Formats scripts with hooks, body content, and call-to-actions
+- Outputs production-ready scripts for various content categories
+
+#### How It Works
+
+1. **Manual Trigger**: Start the workflow on-demand
+2. **Configuration**: Set search topic, content category, target subreddits, and number of posts
+3. **Reddit Search**: Uses PostCrawl to search multiple subreddits simultaneously
+4. **Post Filtering**: Removes posts with extraction errors
+5. **Data Preparation**: Extracts titles, descriptions, scores, and top comments
+6. **AI Generation**: OpenAI GPT-4o-mini creates 3-5 script variations
+7. **Script Formatting**: Outputs structured scripts with metadata
+
+#### Prerequisites
+
+1. **n8n instance** - Running n8n automation platform
+2. **PostCrawl API account** - For Reddit content extraction
+3. **OpenAI API account** - For AI-powered script generation
+
+#### Setup Instructions
+
+1. **Import the workflow**:
+   - Open your n8n instance
+   - Go to Workflows → Import from file
+   - Select `youtube-script-generator.json`
+
+2. **Configure authentication**:
+   - **PostCrawl API Node**: Add your PostCrawl Bearer token in credentials
+   - **OpenAI Node**: Configure your OpenAI API credentials
+
+3. **Configure search parameters**:
+   - Edit the "Configuration" node
+   - Set `topic`: Your search terms (e.g., "yeti bigfoot")
+   - Set `category`: Content type (e.g., "conspiracy theories", "jokes", "today i learned")
+   - Set `subreddits`: Space-separated list (e.g., "HighStrangeness Cryptozoology bigfoot")
+   - Set `numberOfPosts`: 15-20 recommended for multi-subreddit searches
+
+#### Output Format
+
+Each generated script includes:
+- **Title**: Catchy title for the content
+- **Hook**: Opening line to grab attention
+- **Body**: Main content (optimized for 60-second delivery)
+- **Ending**: Call-to-action or closing thought
+- **Metadata**: Category, topic, estimated duration, and creation timestamp
+
+#### Popular Multi-Subreddit Searches
+
+**Conspiracy Theories:**
+- Topic: "yeti bigfoot" → Subreddits: "HighStrangeness Cryptozoology bigfoot conspiracy"
+- Topic: "ancient aliens pyramids" → Subreddits: "conspiracy AlternativeHistory AncientAliens"
+- Topic: "UFO sightings" → Subreddits: "UFOs aliens conspiracy HighStrangeness"
+
+**Today I Learned:**
+- Topic: "weird historical facts" → Subreddits: "todayilearned history AskHistorians"
+- Topic: "space discoveries" → Subreddits: "space astronomy todayilearned"
+
+**Jokes:**
+- Topic: "best puns wordplay" → Subreddits: "dadjokes puns Jokes"
+
+#### Important Notes
+
+- PostCrawl searches can take up to 5 minutes to return results
+- Multi-subreddit searches provide more diverse content
+- Subreddit names are automatically quoted in the search query
+- Scripts are optimized for text-to-speech narration
+- Content is kept under 200 words (approximately 60 seconds when spoken)
