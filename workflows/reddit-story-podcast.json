@@ -1,0 +1,446 @@
+{
+  "name": "reddit story podcast",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "10612779-f186-41f2-b540-916bbc2caf10",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        -1360,
+        -48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "subreddits",
+              "name": "subreddits",
+              "type": "string",
+              "value": "AskReddit"
+            },
+            {
+              "id": "numberOfStories",
+              "name": "numberOfStories",
+              "type": "number",
+              "value": 5
+            },
+            {
+              "id": "podcastName",
+              "name": "podcastName",
+              "type": "string",
+              "value": "Reddit Story Shorts"
+            },
+            {
+              "id": "voiceModel",
+              "name": "voiceModel",
+              "type": "string",
+              "value": "nova"
+            },
+            {
+              "id": "speechSpeed",
+              "name": "speechSpeed",
+              "type": "number",
+              "value": 1.15
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39a35c68-324a-4ff0-becc-bd27b9d6f6cd",
+      "name": "Short Podcast Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -1136,
+        -48
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://edge.postcrawl.com/v1/search-and-extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ \"best short \" + $json.subreddits.split(' ').map(sub => '\"' + sub + '\"').join(' or ') }}"
+            },
+            {
+              "name": "results",
+              "value": "={{ $json.numberOfStories }}"
+            },
+            {
+              "name": "include_comments",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "response_mode",
+              "value": "raw"
+            },
+            {
+              "name": "social_platforms",
+              "value": "={{ [\"reddit\"] }}"
+            },
+            {
+              "name": "page",
+              "value": "={{ 1 }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "d4511ef8-9c57-4301-87c8-47b1d7372acd",
+      "name": "Fetch Reddit Stories",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -912,
+        -48
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "9ZpioiZZ9VsCAH0v",
+          "name": "PostCrawl Bearer dev-ideaape"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "check-null",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "={{ null }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-empty",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a5e34889-2624-4586-af4b-62100811db74",
+      "name": "Filter Valid Stories",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        -688,
+        -48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter and prepare the shortest, most impactful stories\nconst stories = $input.all();\nconst config = $('Short Podcast Configuration').first().json;\n\n// Extract and score stories based on brevity and impact\nconst scoredStories = stories.map(item => {\n  const post = item.json.raw;\n  if (!post) return null;\n  \n  // Calculate word count\n  const wordCount = (post.title + ' ' + post.description).split(' ').length;\n  \n  // Score based on engagement and brevity\n  const engagementScore = post.score / 1000; // Normalize score\n  const brevityScore = wordCount < 50 ? 10 : wordCount < 100 ? 5 : 1;\n  const totalScore = engagementScore + brevityScore;\n  \n  return {\n    title: post.title,\n    content: post.description,\n    subreddit: post.subredditName,\n    score: post.score,\n    wordCount: wordCount,\n    totalScore: totalScore\n  };\n}).filter(Boolean);\n\n// Sort by total score and take the best one\nconst bestStory = scoredStories\n  .sort((a, b) => b.totalScore - a.totalScore)\n  .slice(0, 1)[0];\n\nreturn [{\n  json: {\n    selectedStory: bestStory,\n    config: config,\n    episodeDate: new Date().toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "9ade4773-9f76-4c39-99ef-13e013f01e21",
+      "name": "Select Best Short Story",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -464,
+        -48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a script writer for ultra-short podcast episodes (under 45 seconds when spoken). Create punchy, engaging scripts that get straight to the point. Use hooks, deliver the story quickly, and end with impact.",
+              "role": "system"
+            },
+            {
+              "content": "=Create a 45-second podcast script for \"{{ $json.config.podcastName }}\" using this story:\n\nTitle: {{ $json.selectedStory.title }}\nContent: {{ $json.selectedStory.content }}\nFrom: r/{{ $json.selectedStory.subreddit }}\n\nRequirements:\n- Total script must be under 120 words (45 seconds at normal speaking pace)\n- Start with a hook (5-10 words)\n- Tell the story concisely (80-100 words)\n- End with a punchy outro (10-15 words)\n- Make it conversational and engaging\n\nReturn ONLY a JSON object:\n{\n  \"script\": \"The complete script text here\",\n  \"wordCount\": 120\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.8
+        }
+      },
+      "id": "2ce661ed-8450-4bba-9d76-8382f0b7ca55",
+      "name": "Generate Short Script",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        -240,
+        -48
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "A4NGorxf4I0UVzux",
+          "name": "OpenAi account Elapse old"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse script and prepare for audio generation\nconst scriptResponse = JSON.parse($input.first().json.message.content);\nconst config = $('Short Podcast Configuration').first().json;\nconst story = $('Select Best Short Story').first().json.selectedStory;\n\n// Create single audio segment\nreturn [{\n  json: {\n    text: scriptResponse.script,\n    voice: config.voiceModel,\n    speed: config.speechSpeed,\n    wordCount: scriptResponse.wordCount,\n    estimatedDuration: Math.round(scriptResponse.wordCount / 3), // 3 words per second\n    metadata: {\n      title: `Reddit Shorts: ${story.title.substring(0, 50)}...`,\n      subreddit: story.subreddit,\n      date: new Date().toISOString(),\n      originalScore: story.score\n    }\n  }\n}];"
+      },
+      "id": "8635d16f-bf26-406d-ac2c-dd1057675b59",
+      "name": "Prepare Audio Output",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        160,
+        -48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "model": "tts-1-hd",
+        "input": "={{ $json.text }}",
+        "voice": "={{ $json.voice }}",
+        "options": {
+          "speed": "={{ $json.speed }}"
+        }
+      },
+      "id": "64ef41ca-2c9f-4a3b-ae91-370b12031bcb",
+      "name": "Generate Audio",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        384,
+        -48
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "A4NGorxf4I0UVzux",
+          "name": "OpenAi account Elapse old"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "98577433-8b5b-44de-bc1d-3af7dd6faf3e",
+      "name": "Convert to Data URI",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "position": [
+        608,
+        -48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "audioDataUri",
+              "name": "audioDataUri",
+              "type": "string",
+              "value": "={{ $json.data }}"
+            },
+            {
+              "id": "metadata",
+              "name": "metadata",
+              "type": "object",
+              "value": "={{ $('Prepare Audio Output').item.json.metadata }}"
+            },
+            {
+              "id": "duration",
+              "name": "duration",
+              "type": "string",
+              "value": "={{ $('Prepare Audio Output').item.json.estimatedDuration }} seconds"
+            },
+            {
+              "id": "script",
+              "name": "script",
+              "type": "string",
+              "value": "={{ $('Prepare Audio Output').item.json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2e460d4-fab9-470f-a1b1-5bd92a8e59b3",
+      "name": "Final Output",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        832,
+        -48
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "content": "## 🎙️ Reddit Short Podcast Generator\n\n### Overview\nThis streamlined workflow creates ultra-short podcast episodes (under 1 minute) from Reddit stories:\n\n1. **Fetches** trending short stories from Reddit\n2. **Selects** the best story based on engagement and brevity\n3. **Generates** a punchy 45-second script\n4. **Creates** audio file with TTS\n\n### Features\n- Single story per episode for maximum impact\n- Optimized for short-form content\n- Fast speech rate (1.15x) for energy\n- Ready-to-share audio output\n\n### Configuration\n- **Subreddits**: Currently set to AskReddit\n- **Voice**: Nova (energetic female voice)\n- **Target Length**: 45 seconds\n\n### Use Cases\n- Social media shorts\n- Story previews\n- Daily quick listens\n- Testing podcast concepts",
+        "height": 400,
+        "width": 380,
+        "color": 2
+      },
+      "id": "425bfcff-b7ba-4c9d-9452-75a74c50c683",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1792,
+        -256
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 📊 Output Format\n\nThe final node provides:\n- **Audio Data URI**: Ready to play or save\n- **Metadata**: Title, subreddit, date\n- **Duration**: Estimated length\n- **Script**: Full text for reference\n\nPerfect for:\n- Quick social media posts\n- Testing voice settings\n- Story previews\n- Podcast teasers",
+        "height": 250,
+        "width": 350,
+        "color": 5
+      },
+      "id": "89fcaa59-589e-4bfc-a5cb-14ae55751e40",
+      "name": "Output Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        608,
+        192
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Short Podcast Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Short Podcast Configuration": {
+      "main": [
+        [
+          {
+            "node": "Fetch Reddit Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Reddit Stories": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Stories": {
+      "main": [
+        [
+          {
+            "node": "Select Best Short Story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Best Short Story": {
+      "main": [
+        [
+          {
+            "node": "Generate Short Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Short Script": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audio Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audio Output": {
+      "main": [
+        [
+          {
+            "node": "Generate Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Audio": {
+      "main": [
+        [
+          {
+            "node": "Convert to Data URI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Data URI": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c934e1cd-e042-4f9f-adfb-01356960a2eb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c8a2282de7b66c3518f515d2b7925b072f0a61547fc3bee35e7b960f8ae6b4b6"
+  },
+  "id": "sTb4OS41MUxcrNEw",
+  "tags": []
+}
